@@ -8,8 +8,8 @@ from ultralytics import YOLO
 app = Flask(__name__)
 
 # --- Variables globales ---
-available_spots = 0
-total_zones = 22  # Valor inicial ajustable desde la UI
+manual_occupied = 0  # Autos ocupando lugares (modificable con botones)
+total_zones = 22     # Lugares totales (fijo)
 
 # --- Cargar modelo YOLO ---
 model = YOLO('yolov8s.pt', task='track')
@@ -29,7 +29,7 @@ zones = [(
 camera = cv2.VideoCapture(0)
 
 def process_camera():
-    global available_spots
+    global manual_occupied
     frame_count = 0
     inference_interval = 3
     last_results = None
@@ -58,6 +58,8 @@ def process_camera():
                         'track_id': track_id
                     })
 
+        # --- Conteo automático (aún no implementado) ---
+        """
         occupied = 0
         for (p1, p2) in zones:
             x_min = min(p1[0], p2[0])
@@ -67,7 +69,7 @@ def process_camera():
             zone_occupied = False
 
             for obj in current_objects:
-                if obj['cls_id'] == 2:  # ID de 'car'
+                if obj['cls_id'] == 2:
                     ox1, oy1, ox2, oy2 = obj['bbox']
                     if ox1 < x_max and ox2 > x_min and oy1 < y_max and oy2 > y_min:
                         zone_occupied = True
@@ -75,32 +77,35 @@ def process_camera():
             if zone_occupied:
                 occupied += 1
 
-        available_spots = max(0, total_zones - occupied)
+        manual_occupied = occupied
+        """
+
         time.sleep(0.1)
 
-# --- Iniciar procesamiento en segundo plano ---
+# --- Hilo del procesamiento ---
 t = threading.Thread(target=process_camera, daemon=True)
 t.start()
 
-# --- Endpoints de Flask ---
+# --- Flask Endpoints ---
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/available_spots')
 def get_spots():
-    return jsonify({"spots": available_spots})
+    return jsonify({"occupied": manual_occupied, "total": total_zones})
 
-@app.route('/update_total_spots', methods=['POST'])
-def update_total_spots():
-    global total_zones
+@app.route('/update_occupied', methods=['POST'])
+def update_occupied():
+    global manual_occupied
     data = request.get_json()
     action = data.get('action')
-    if action == 'increment':
-        total_zones += 1
-    elif action == 'decrement' and total_zones > 0:
-        total_zones -= 1
-    return jsonify({'total_zones': total_zones})
+    if action == 'increment' and manual_occupied < total_zones:
+        manual_occupied += 1
+    elif action == 'decrement' and manual_occupied > 0:
+        manual_occupied -= 1
+    return jsonify({'occupied': manual_occupied})
 
 @app.route('/video')
 def video():
@@ -115,6 +120,5 @@ def video():
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
     return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# --- Ejecutar servidor Flask ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
