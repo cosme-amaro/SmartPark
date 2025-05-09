@@ -8,8 +8,9 @@ from ultralytics import YOLO
 app = Flask(__name__)
 
 # --- Variables globales ---
-manual_occupied = 0  # Autos ocupando lugares (modificable con botones)
-total_zones = 22     # Lugares totales (fijo)
+manual_adjustment = 0
+detected_occupied = 0
+
 
 # --- Cargar modelo YOLO ---
 model = YOLO('yolov8s.pt', task='track')
@@ -26,10 +27,11 @@ zones = [(
     (int(p2[0] * resize_factor), int(p2[1] * resize_factor))
 ) for (p1, p2) in zones]
 
+total_zones = len(zones)
 camera = cv2.VideoCapture(0)
 
 def process_camera():
-    global manual_occupied
+    global detected_occupied
     frame_count = 0
     inference_interval = 3
     last_results = None
@@ -58,9 +60,8 @@ def process_camera():
                         'track_id': track_id
                     })
 
-        # --- Conteo automático (aún no implementado) ---
-        """
-        occupied = 0
+        # Detección automática con zonas
+        detected = 0
         for (p1, p2) in zones:
             x_min = min(p1[0], p2[0])
             y_min = min(p1[1], p2[1])
@@ -69,24 +70,22 @@ def process_camera():
             zone_occupied = False
 
             for obj in current_objects:
-                if obj['cls_id'] == 2:
+                if obj['cls_id'] == 2:  # Car
                     ox1, oy1, ox2, oy2 = obj['bbox']
                     if ox1 < x_max and ox2 > x_min and oy1 < y_max and oy2 > y_min:
                         zone_occupied = True
                         break
             if zone_occupied:
-                occupied += 1
+                detected += 1
 
-        manual_occupied = occupied
-        """
-
+        detected_occupied = detected
         time.sleep(0.1)
 
-# --- Hilo del procesamiento ---
+# --- Iniciar hilo de detección ---
 t = threading.Thread(target=process_camera, daemon=True)
 t.start()
 
-# --- Flask Endpoints ---
+# --- Rutas Flask ---
 
 @app.route('/')
 def index():
@@ -94,18 +93,21 @@ def index():
 
 @app.route('/available_spots')
 def get_spots():
-    return jsonify({"occupied": manual_occupied, "total": total_zones})
+    global manual_adjustment, detected_occupied
+    raw_occupied = detected_occupied + manual_adjustment
+    occupied = max(0, min(raw_occupied, total_zones))  # clamp
+    return jsonify({"occupied": occupied, "total": total_zones})
 
-@app.route('/update_occupied', methods=['POST'])
-def update_occupied():
-    global manual_occupied
+@app.route('/adjust_occupied', methods=['POST'])
+def adjust_occupied():
+    global manual_adjustment
     data = request.get_json()
     action = data.get('action')
-    if action == 'increment' and manual_occupied < total_zones:
-        manual_occupied += 1
-    elif action == 'decrement' and manual_occupied > 0:
-        manual_occupied -= 1
-    return jsonify({'occupied': manual_occupied})
+    if action == 'increment':
+        manual_adjustment += 1
+    elif action == 'decrement':
+        manual_adjustment -= 1
+    return jsonify({'manual_adjustment': manual_adjustment})
 
 @app.route('/video')
 def video():

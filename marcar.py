@@ -33,7 +33,7 @@ def draw_rectangle(event, x, y, flags, param):
         current_rect = []
 
 # Cargar imagen o video
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 cv2.namedWindow('Marcar espacios')
 cv2.setMouseCallback('Marcar espacios', draw_rectangle)
 

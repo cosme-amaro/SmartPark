@@ -166,7 +166,7 @@
     }
 
     function changeOccupied(action) {
-      fetch('/update_occupied', {
+      fetch('/adjust_occupied', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: action })
