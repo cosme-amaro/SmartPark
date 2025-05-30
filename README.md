@@ -1,4 +1,4 @@
-# SmartPark: Parking Monitoring System with YOLO and Raspberry Pi
+# SmartPark: Parking Monitoring System with YOLO, Jetson Nano and RaspberryPi3
 
 **SmartPark** is a real-time vehicle detection system that uses computer vision to monitor parking occupancy and control a physical LED traffic light. Built using YOLOv8, Flask, Jetson, and Raspberry Pi, it allows users to view live parking availability through a web interface and reflect status using red and green LEDs.
 
