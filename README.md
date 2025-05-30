@@ -23,7 +23,7 @@
 - Python 3.8+
 - OpenCV
 - Flask
-- Ultralytics (`pip install ultralytics`)
+- Ultralytics 
 
 ### Raspberry Pi (for LED control):
 - Python 3
