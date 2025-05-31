@@ -15,7 +15,7 @@ zones = []
 current_rect = []
 
 # Factor de escala para agrandar la ventana
-resize_factor = 2.5  # Puedes ajustar a 1.0, 1.2, 2.0, etc.
+resize_factor = 1.5  # Puedes ajustar a 1.0, 1.2, 2.0, etc.
 
 # Callback del mouse
 def draw_rectangle(event, x, y, flags, param):
