@@ -13,7 +13,7 @@ with open('zonas/parking_zones.json', 'r') as f:
     zones = [((int(p1[0]), int(p1[1])), (int(p2[0]), int(p2[1]))) for (p1, p2) in raw_zones]
 
 # Set camera
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)  # Change to your video source if needed
 
 frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -21,7 +21,7 @@ frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 # Parameters for performance
 target_fps = 10
 frame_delay = 1.0 / target_fps
-resize_factor = 0.5
+resize_factor = 1.8
 last_frame_time = 0
 inference_interval = 3  # Run inference every 3 frames
 frame_count = 0

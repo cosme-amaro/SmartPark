@@ -20,24 +20,30 @@
     }
 
     .content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px; /* Antes era 10px, ahora menor */
-}
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
 
     h1 {
       font-size: 2.5em;
       text-shadow: 2px 2px 4px #000;
-      margin: 0.2em 0; /* Reducir márgenes superior e inferior */
-      line-height: 1.1; /* Reduce espacio vertical entre líneas si aplica */
+      margin: 0.2em 0;
+      line-height: 1.1;
+    }
+
+    .light-status {
+      font-size: 1.5em;
+      margin-bottom: 0.3em;
+      text-shadow: 1px 1px 3px #000;
     }
 
     .count {
       font-size: 4em;
       font-weight: bold;
       text-shadow: 2px 2px 6px #000;
-      margin: 0.1em 0; /* Espacio más compacto */
+      margin: 0.1em 0;
       line-height: 1;
     }
 
@@ -50,9 +56,8 @@
 
     .car-icon {
       font-size: 3em;
-      margin-bottom: 0.3em; /* Antes 0.5em */
+      margin-bottom: 0.3em;
     }
-
 
     .semaforo {
       display: flex;
@@ -114,6 +119,7 @@
 <body>
   <div class="content">
     <h1>Estacionamiento G</h1>
+    <div id="lightState" class="light-status">🌞 Día</div>
     <div class="count" id="count">--</div>
     <div class="label">LUGARES DISPONIBLES</div>
     <div class="car-icon">🚗</div>
@@ -139,7 +145,7 @@
   </div>
 
   <script>
-    let totalSpots = 22;  // Este valor debe coincidir con el backend
+    let totalSpots = 22;
 
     function updateCount() {
       fetch('/available_spots')
@@ -149,7 +155,6 @@
           const total = data.total;
           document.getElementById("count").textContent = `${occupied} / ${total}`;
 
-          // Actualizar semáforo
           const available = total - occupied;
           const greenCircle = document.getElementById("greenCircle");
           const redCircle = document.getElementById("redCircle");
@@ -165,6 +170,21 @@
         .catch(error => console.error('Error:', error));
     }
 
+    function updateLightStatus() {
+      fetch('/light_status')
+        .then(response => response.json())
+        .then(data => {
+          const state = data.light_condition;
+          const lightDiv = document.getElementById("lightState");
+          if (state === "night") {
+            lightDiv.textContent = "🌙 Noche";
+          } else {
+            lightDiv.textContent = "🌞 Día";
+          }
+        })
+        .catch(error => console.error('Error en estado de luz:', error));
+    }
+
     function changeOccupied(action) {
       fetch('/adjust_occupied', {
         method: 'POST',
@@ -177,8 +197,13 @@
       });
     }
 
-    setInterval(updateCount, 2000);
+    setInterval(() => {
+      updateCount();
+      updateLightStatus();
+    }, 2000);
+
     updateCount();
+    updateLightStatus();
   </script>
 </body>
 </html>
