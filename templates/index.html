@@ -3,22 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <title>Estacionamiento Tec</title>
+
+  <!-- Estilos CSS para el diseño visual del dashboard -->
   <style>
+    /* Estilos generales del cuerpo de la página */
     body {
       margin: 0;
       font-family: 'Arial', sans-serif;
-      background-image: url("{{ url_for('static', filename='background.png') }}");
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
       color: white;
       text-align: center;
       height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: background-image 0.5s ease-in-out;
     }
 
+    /* Contenedor principal del contenido */
     .content {
       display: flex;
       flex-direction: column;
@@ -26,6 +30,7 @@
       gap: 5px;
     }
 
+    /* Título principal */
     h1 {
       font-size: 2.5em;
       text-shadow: 2px 2px 4px #000;
@@ -33,12 +38,14 @@
       line-height: 1.1;
     }
 
+    /* Estado del día o noche */
     .light-status {
       font-size: 1.5em;
       margin-bottom: 0.3em;
       text-shadow: 1px 1px 3px #000;
     }
 
+    /* Contador de espacios */
     .count {
       font-size: 4em;
       font-weight: bold;
@@ -47,6 +54,7 @@
       line-height: 1;
     }
 
+    /* Etiqueta debajo del contador */
     .label {
       font-size: 1.5em;
       text-shadow: 2px 2px 4px #000;
@@ -54,17 +62,20 @@
       line-height: 1;
     }
 
+    /* Icono de auto */
     .car-icon {
       font-size: 3em;
       margin-bottom: 0.3em;
     }
 
+    /* Contenedor de luces tipo semáforo */
     .semaforo {
       display: flex;
       gap: 20px;
       margin-bottom: 10px;
     }
 
+    /* Estilo de cada círculo (rojo o verde) */
     .circle {
       width: 40px;
       height: 40px;
@@ -74,20 +85,18 @@
       box-shadow: 0 0 8px #000;
     }
 
-    .active-green {
-      background-color: limegreen;
-    }
+    /* Colores activos para los semáforos */
+    .active-green { background-color: limegreen; }
+    .active-red { background-color: red; }
 
-    .active-red {
-      background-color: red;
-    }
-
+    /* Sección donde se encuentra la cámara y botones */
     .camera-section {
       display: flex;
       align-items: center;
       gap: 20px;
     }
 
+    /* Estilo de los botones de control */
     .controls button {
       font-size: 3em;
       padding: 10px 20px;
@@ -97,12 +106,14 @@
       color: #000;
       cursor: pointer;
       transition: background-color 0.3s ease;
+      margin-bottom: 10px;
     }
 
     .controls button:hover {
       background-color: #fff;
     }
 
+    /* Estilo del recuadro donde se muestra el stream de la cámara */
     .camera-stream {
       border: 4px solid white;
       border-radius: 15px;
@@ -114,39 +125,79 @@
       width: 480px;
       height: 360px;
     }
+
+    /* Notificación emergente que se muestra tras reiniciar el contador */
+    .notification {
+      display: none;
+      margin-top: 10px;
+      font-size: 1.2em;
+      color: white;
+      background-color: #28a745;
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 12px #000;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .notification.show {
+      display: block;
+      opacity: 1;
+    }
   </style>
 </head>
+
 <body>
+  <!-- Contenido principal del dashboard -->
   <div class="content">
-    <h1>Estacionamiento G</h1>
+    <!-- Encabezados institucionales -->
+    <div>
+      <h2 style="font-size: 1.6em; margin: 0; text-shadow: 1px 1px 3px #000;">Tecnológico de Monterrey</h2>
+      <h3 style="font-size: 1.4em; margin: 0 0 10px 0; text-shadow: 1px 1px 3px #000;">🏫Campus Estado de México</h3>
+      <h1>Estacionamiento G</h1>
+    </div>
+
+    <!-- Estado del día o noche -->
     <div id="lightState" class="light-status">🌞 Día</div>
+
+    <!-- Contador de lugares disponibles -->
     <div class="count" id="count">--</div>
     <div class="label">LUGARES DISPONIBLES</div>
     <div class="car-icon">🚗</div>
 
+    <!-- Indicadores tipo semáforo -->
     <div class="semaforo">
       <div id="greenCircle" class="circle"></div>
       <div id="redCircle" class="circle"></div>
     </div>
 
+    <!-- Sección con el video de la cámara y los botones de control -->
     <div class="camera-section">
       <div class="controls">
         <button onclick="changeOccupied('decrement')">−</button>
       </div>
 
+      <!-- Stream de video en vivo desde la cámara -->
       <div class="camera-stream">
         <img src="/video" alt="Stream de cámara">
       </div>
 
       <div class="controls">
         <button onclick="changeOccupied('increment')">+</button>
+        <!-- Botón para reiniciar el contador -->
+        <button onclick="resetOccupied()" style="font-size: 1em; padding: 6px 12px; margin-top: 10px;">🔄 Reset</button>
       </div>
     </div>
+
+    <!-- Notificación que aparece tras una acción -->
+    <div id="notification" class="notification">Contador reiniciado ✅</div>
   </div>
 
+  <!-- Scripts en JavaScript para la lógica del dashboard -->
   <script>
-    let totalSpots = 22;
+    let totalSpots = 22; // Total de lugares disponibles
 
+    // Función que actualiza el conteo de lugares ocupados/disponibles
     function updateCount() {
       fetch('/available_spots')
         .then(response => response.json())
@@ -159,6 +210,7 @@
           const greenCircle = document.getElementById("greenCircle");
           const redCircle = document.getElementById("redCircle");
 
+          // Mostrar verde si hay lugares, rojo si está lleno
           if (available > 0) {
             greenCircle.classList.add("active-green");
             redCircle.classList.remove("active-red");
@@ -170,21 +222,27 @@
         .catch(error => console.error('Error:', error));
     }
 
+    // Función que actualiza el fondo y el estado (día/noche)
     function updateLightStatus() {
       fetch('/light_status')
         .then(response => response.json())
         .then(data => {
           const state = data.light_condition;
           const lightDiv = document.getElementById("lightState");
+          const body = document.body;
+
           if (state === "night") {
             lightDiv.textContent = "🌙 Noche";
+            body.style.backgroundImage = "url('/static/background-night.png')";
           } else {
             lightDiv.textContent = "🌞 Día";
+            body.style.backgroundImage = "url('/static/background-day.png')";
           }
         })
         .catch(error => console.error('Error en estado de luz:', error));
     }
 
+    // Función para aumentar o disminuir manualmente el contador
     function changeOccupied(action) {
       fetch('/adjust_occupied', {
         method: 'POST',
@@ -193,15 +251,52 @@
       })
       .then(response => response.json())
       .then(data => {
-        updateCount();
+        updateCount(); // Actualiza el conteo tras la acción
       });
     }
 
+    // Función para reiniciar el contador a su valor inicial
+    function resetOccupied() {
+      fetch('/adjust_occupied', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' })
+      })
+      .then(response => response.json())
+      .then(data => {
+        updateCount();
+        showNotification("Contador reiniciado");
+      });
+    }
+
+    // Función para mostrar una notificación en pantalla
+    function showNotification(message, type = 'success') {
+      const notification = document.getElementById("notification");
+
+      if (type === 'success') {
+        notification.style.backgroundColor = '#28a745';
+        notification.textContent = `✅ ${message}`;
+      } else if (type === 'error') {
+        notification.style.backgroundColor = '#dc3545';
+        notification.textContent = `❌ ${message}`;
+      } else if (type === 'warning') {
+        notification.style.backgroundColor = '#ffc107';
+        notification.textContent = `⚠️ ${message}`;
+      }
+
+      notification.classList.add("show");
+      setTimeout(() => {
+        notification.classList.remove("show");
+      }, 3000); // Oculta la notificación después de 3 segundos
+    }
+
+    // Actualiza el contador y la luz cada 2 segundos automáticamente
     setInterval(() => {
       updateCount();
       updateLightStatus();
     }, 2000);
 
+    // Inicializa el estado al cargar la página
     updateCount();
     updateLightStatus();
   </script>
