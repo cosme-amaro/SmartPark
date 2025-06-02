@@ -17,14 +17,14 @@ app = Flask(__name__)
 manual_adjustment = 0             # Ajustes manuales hechos por el usuario (+ o - ocupación)
 detected_occupied = 0             # Conteo de espacios ocupados detectados automáticamente
 current_light_state = "day"       # Estado actual de luz (día/noche)
+CONFIDENCE_THRESHOLD = 0.5        # Umbral mínimo de confianza para detección válida
 
-# --- Cargar modelo YOLOv8 preentrenado para seguimiento (tracking) ---
-model = YOLO('yolov8s.pt', task='track')
+# --- Cargar modelo YOLOv5n preentrenado ---
+model = YOLO('yolov5n.pt')
 
 # --- Cargar zonas de estacionamiento desde archivo JSON ---
 with open('zonas/parking_zones.json', 'r') as f:
     raw_zones = json.load(f)
-    # Convertir coordenadas de las zonas a formato de tuplas de enteros
     zones = [((int(p1[0]), int(p1[1])), (int(p2[0]), int(p2[1]))) for (p1, p2) in raw_zones]
 
 # Reducción de tamaño para acelerar el procesamiento (opcional)
@@ -62,36 +62,36 @@ def process_camera():
     last_results = None        # Guardar último resultado del modelo
 
     while True:
+        start_time = time.time()
+
         ret, frame = camera.read()
         if not ret:
             continue
 
-        # Redimensionar el frame
         frame = cv2.resize(frame, (0, 0), fx=resize_factor, fy=resize_factor)
 
-        # Verificar si es de noche
         is_dark, brightness = is_night(frame)
         if is_dark:
             frame = enhance_night_image(frame)
 
-        # Cambio automático de estado día/noche
         if is_dark and current_light_state == "day":
             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cambio a modo NOCHE. Brillo: {brightness:.2f}")
             current_light_state = "night"
         elif not is_dark and current_light_state == "night":
-            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cambio a modo DÍA. Brillo: {brightness:.2f}")
+            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cambio a modo DÃ­a. Brillo: {brightness:.2f}")
             current_light_state = "day"
 
         frame_count += 1
         if frame_count % inference_interval == 0:
             last_results = model.track(frame, persist=True)
 
-        # Extraer objetos detectados
         current_objects = []
         if last_results:
             for r in last_results:
                 for box in r.boxes:
-                    cls_id = int(box.cls[0])  # Clase detectada
+                    if box.conf[0] < CONFIDENCE_THRESHOLD:
+                        continue
+                    cls_id = int(box.cls[0])
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     track_id = int(box.id[0]) if box.id is not None else None
                     current_objects.append({
@@ -100,7 +100,6 @@ def process_camera():
                         'track_id': track_id
                     })
 
-        # Verificar si cada zona está ocupada
         detected = 0
         for (p1, p2) in zones:
             x_min, y_min = min(p1[0], p2[0]), min(p1[1], p2[1])
@@ -108,7 +107,7 @@ def process_camera():
             zone_occupied = False
 
             for obj in current_objects:
-                if obj['cls_id'] == 2:  # Clase 2 = auto
+                if obj['cls_id'] == 2:
                     ox1, oy1, ox2, oy2 = obj['bbox']
                     if ox1 < x_max and ox2 > x_min and oy1 < y_max and oy2 > y_min:
                         zone_occupied = True
@@ -117,35 +116,33 @@ def process_camera():
                 detected += 1
 
         detected_occupied = detected
+
+        end_time = time.time()
+        fps = 1 / (end_time - start_time)
+        print(f"FPS: {fps:.2f}")
+
         time.sleep(0.1)
 
-# --- Iniciar hilo para la cámara (detección constante en segundo plano) ---
 t = threading.Thread(target=process_camera, daemon=True)
 t.start()
 
-# ======================= RUTAS FLASK =========================
-
-# Página principal
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Ruta para obtener lugares ocupados y totales
 @app.route('/available_spots')
 def get_spots():
     global manual_adjustment, detected_occupied
     raw_occupied = detected_occupied + manual_adjustment
-    occupied = max(0, min(raw_occupied, total_zones))  # Limita el valor entre 0 y total
+    occupied = max(0, min(raw_occupied, total_zones))
     return jsonify({"occupied": occupied, "total": total_zones})
 
-# Ruta para ajustar manualmente el contador
 @app.route('/adjust_occupied', methods=['POST'])
 def adjust_occupied():
     global manual_adjustment
     data = request.get_json()
     action = data.get('action')
 
-    # Incrementar, decrementar o resetear el contador manual
     if action == 'increment':
         manual_adjustment += 1
     elif action == 'decrement':
@@ -154,7 +151,6 @@ def adjust_occupied():
         manual_adjustment = 0
     return jsonify({'manual_adjustment': manual_adjustment})
 
-# Ruta para transmitir el video desde la cámara
 @app.route('/video')
 def video():
     def gen():
@@ -172,11 +168,9 @@ def video():
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
     return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# Ruta para obtener el estado actual de luz (día o noche)
 @app.route('/light_status')
 def light_status():
     return jsonify({"light_condition": current_light_state})
 
-# --- Ejecutar el servidor web Flask ---
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)  # Ejecuta el servidor accesible desde cualquier IP local
+    app.run(host='0.0.0.0', port=5000)
