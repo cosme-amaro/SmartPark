@@ -21,7 +21,7 @@ frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 # Parameters for performance
 target_fps = 10
 frame_delay = 1.0 / target_fps
-resize_factor = 1.8
+resize_factor = 1.5
 last_frame_time = 0
 inference_interval = 3  # Run inference every 3 frames
 frame_count = 0

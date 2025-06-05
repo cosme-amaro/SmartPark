@@ -16,7 +16,7 @@ GPIO.setup(LED_VERDE, GPIO.OUT)  # Configurar el pin del LED verde como salida
 GPIO.setup(LED_ROJO, GPIO.OUT)   # Configurar el pin del LED rojo como salida
 
 # Dirección IP del servidor Flask que devuelve el número de lugares ocupados
-RASPBERRY_A_IP = 'http://192.168.1.100:5000/available_spots'  # Cambiar esta IP según la red
+RASPBERRY_A_IP = 'http://10.48.18.182:5000/available_spots'  # Cambiar esta IP según la red
 
 # Leer el archivo JSON que contiene las zonas para calcular el número total de lugares
 try:
