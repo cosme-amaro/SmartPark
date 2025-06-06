@@ -16,6 +16,7 @@
 - `SmartPark.py` – Flask server that runs YOLO inference and exposes `/video` and `/available_spots` endpoints.
 - `marcar.py` – Tool for manually marking parking zones over live camera feed.
 - `SmarParkReceptor.py` – Raspberry Pi script that reads parking data and controls LEDs accordingly.
+- `photocapture.py` – Jetson nano takes photos every 30 seconsd and stores them in a specific folder.
 
 ## Requirements
 
